@@ -34,6 +34,7 @@ from com.dtmilano.android.adb.adbclient import AdbClient
 from com.dtmilano.android.common import profileEnd
 from com.dtmilano.android.common import profileStart
 from com.dtmilano.android.concertina import Concertina
+from com.dtmilano.android.culebra_gui import calculate_window_scale
 from com.dtmilano.android.keyevent import KEY_EVENT
 from com.dtmilano.android.uiautomator.uiautomatorhelper import UiAutomatorHelper
 from com.dtmilano.android.viewclient import ViewClient, View, VERSION_SDK_PROPERTY
@@ -41,7 +42,6 @@ from com.dtmilano.android.viewclient import ViewClient, View, VERSION_SDK_PROPER
 __version__ = '25.0.0'
 
 import sys
-import threading
 import warnings
 import copy
 import os
@@ -183,6 +183,7 @@ class Operation:
 
 class Culebron:
     APPLICATION_NAME = "Culebra"
+    DEVICE_ACTION_REFRESH_DELAY_MS = 300
 
     UPPERCASE_CHARS = string.ascii_uppercase
 
@@ -283,6 +284,7 @@ This is usually installed by python package. Check your distribution details.
         self.device = device
         self.sdkVersion = device.getSdkVersion()
         self.serialno = serialno
+        self.requestedScale = scale
         self.scale = scale
         self.concertina = concertina
         self.concertinaConfig = dict()
@@ -404,6 +406,11 @@ This is usually installed by python package. Check your distribution details.
             self.unscaledScreenshot = self.device.takeSnapshot(reconnect=True)
         self.image = self.unscaledScreenshot
         (width, height) = self.image.size
+        self.scale = calculate_window_scale(
+            self.requestedScale,
+            (width, height),
+            (self.window.winfo_screenwidth(), self.window.winfo_screenheight()),
+        )
         if self.scale != 1:
             scaledWidth = int(width * self.scale)
             scaledHeight = int(height * self.scale)
@@ -509,8 +516,7 @@ This is usually installed by python package. Check your distribution details.
             print("toast(", text, ",", background, ")", file=sys.stderr)
         self.message(text, background)
         if text:
-            t = threading.Timer(timeout, self.hideMessageArea)
-            t.start()
+            self.window.after(int(timeout * 1000), self.hideMessageArea)
         else:
             self.hideMessageArea()
 
@@ -976,12 +982,9 @@ This is usually installed by python package. Check your distribution details.
                         y = round(y / self.device.display['density'], 2)
                     self.printOperation(None, Operation.TOUCH_POINT, x, y, self.coordinatesUnit,
                                         self.device.display['orientation'])
-                    self.sleep(5)
-                    # FIXME: can we reduce this sleep? (was 5)
-                    time.sleep(1)
+                    self.sleep(5, do_actual_sleep_before=False)
                     self.isTouchingPoint = self.vc is None
-                    self.takeScreenshotAndShowItOnWindow()
-                    # self.hideVignette()
+                    self.refreshAfterDeviceAction()
                     self.statusBar.clear()
                     return
         else:
@@ -1011,10 +1014,9 @@ This is usually installed by python package. Check your distribution details.
                 y = round(y / self.device.display['density'], 2)
             self.printOperation(None, Operation.LONG_TOUCH_POINT, x, y, 2000, self.coordinatesUnit,
                                 self.device.display['orientation'])
-            self.sleep(5)
+            self.sleep(5, do_actual_sleep_before=False)
             self.isLongTouchingPoint = False
-            self.takeScreenshotAndShowItOnWindow()
-            # self.hideVignette()
+            self.refreshAfterDeviceAction()
             self.statusBar.clear()
             return
 
@@ -1884,6 +1886,9 @@ This is usually installed by python package. Check your distribution details.
             self.printOperation(None, Operation.SLEEP_UI_AUTOMATOR_HELPER, secs)
         else:
             self.printOperation(None, Operation.SLEEP, secs)
+
+    def refreshAfterDeviceAction(self):
+        self.window.after(self.DEVICE_ACTION_REFRESH_DELAY_MS, self.takeScreenshotAndShowItOnWindow)
 
     def getViewContainingPointAndLongTouch(self, x, y):
         # FIXME: this method is almost exactly as getViewContainingPointAndTouch()
