@@ -1,3 +1,5 @@
+import sys
+
 from com.dtmilano.android.device_event_recorder import (
     Gesture,
     TouchDevice,
@@ -86,7 +88,48 @@ def test_render_replay_script_is_valid_python():
     source = render_replay_script([(0, "tap", 100, 200)])
 
     compile(source, "recording.py", "exec")
-    assert 'print(f"再生開始: {action_count}操作", flush=True)' in source
+    assert 'parser.add_argument("--from-action", type=int, default=1)' in source
+    assert 'print(f"再生開始: {args.from_action}/{action_count}操作目から", flush=True)' in source
     assert "タップ x={values[0]}, y={values[1]}" in source
     assert "スワイプ ({values[0]}, {values[1]})→({values[2]}, {values[3]})・{values[4]}ms" in source
     assert 'print(f"再生完了: {action_count}操作", flush=True)' in source
+
+
+def test_generated_replay_resumes_immediately_from_requested_action(monkeypatch, capsys):
+    source = render_replay_script(
+        [(0, "tap", 100, 200), (10, "tap", 300, 400), (12, "tap", 500, 600)]
+    )
+    namespace = {"__name__": "recording"}
+    exec(source, namespace)
+    commands = []
+    sleeps = []
+
+    class FakeSubprocess:
+        @staticmethod
+        def run(command, check):
+            commands.append(command)
+
+    class FakeTime:
+        current = 0
+
+        @classmethod
+        def monotonic(cls):
+            return cls.current
+
+        @classmethod
+        def sleep(cls, seconds):
+            sleeps.append(seconds)
+            cls.current += seconds
+
+    namespace["subprocess"] = FakeSubprocess
+    namespace["time"] = FakeTime
+    monkeypatch.setattr(sys, "argv", ["recording.py", "--from-action", "2"])
+
+    namespace["main"]()
+
+    assert commands == [
+        ["adb", "shell", "input", "tap", "300", "400"],
+        ["adb", "shell", "input", "tap", "500", "600"],
+    ]
+    assert sleeps == [2]
+    assert "再生開始: 2/3操作目から" in capsys.readouterr().out

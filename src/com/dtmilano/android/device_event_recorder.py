@@ -186,16 +186,23 @@ ACTIONS = {actions!r}
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--serial")
+    parser.add_argument("--from-action", type=int, default=1)
     args = parser.parse_args()
     adb = ["adb"]
     if args.serial:
         adb.extend(["-s", args.serial])
     action_count = len(ACTIONS)
-    print(f"再生開始: {{action_count}}操作", flush=True)
+    if action_count == 0:
+        print("再生完了: 0操作", flush=True)
+        return
+    if not 1 <= args.from_action <= action_count:
+        parser.error(f"--from-actionは1から{{action_count}}の範囲で指定してください")
+    resume_offset = ACTIONS[args.from_action - 1][0]
+    print(f"再生開始: {{args.from_action}}/{{action_count}}操作目から", flush=True)
     replay_started_at = time.monotonic()
-    for index, action in enumerate(ACTIONS, 1):
+    for index, action in enumerate(ACTIONS[args.from_action - 1 :], args.from_action):
         start_offset, kind, *values = action
-        remaining = start_offset - (time.monotonic() - replay_started_at)
+        remaining = start_offset - resume_offset - (time.monotonic() - replay_started_at)
         if kind == "tap":
             description = f"タップ x={{values[0]}}, y={{values[1]}}"
         else:
