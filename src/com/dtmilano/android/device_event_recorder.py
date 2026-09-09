@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import threading
 
 
 @dataclass(frozen=True)
@@ -216,20 +217,28 @@ def record(output, serial=None):
     command = adb_command(serial, "exec-out", "su", "0", "getevent", "-lt", device.path)
     parser = TouchEventParser(device)
     gestures = []
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    print(f"記録を開始しました。エミュレーターを直接操作してください: {device.path}", file=sys.stderr)
-    print("終了するにはCtrl+Cを押してください。", file=sys.stderr)
-    try:
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+    def collect_gestures():
         for line in process.stdout:
             gesture = parser.feed(line)
             if gesture:
                 gestures.append(gesture)
                 print(f"記録済み: {len(gestures)}操作", file=sys.stderr)
+
+    reader = threading.Thread(target=collect_gestures)
+    reader.start()
+    print(f"記録を開始しました。エミュレーターを直接操作してください: {device.path}", file=sys.stderr)
+    print("終了して保存するにはEnterを押してください。", file=sys.stderr)
+    try:
+        input()
     except KeyboardInterrupt:
         pass
     finally:
-        process.terminate()
+        if process.poll() is None:
+            process.terminate()
         process.wait()
+        reader.join()
 
     output.write_text(render_replay_script(build_replay_actions(gestures)))
     output.chmod(output.stat().st_mode | 0o100)
