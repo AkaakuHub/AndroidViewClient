@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import call, Mock, patch
 
 import pytest
 
@@ -55,3 +55,21 @@ def test_touch_point_refreshes_without_blocking_gui():
     culebron.printOperation.assert_any_call(None, Operation.TOUCH_POINT, 100.0, 50.0, Unit.DIP, 1)
     culebron.sleep.assert_called_once_with(5, do_actual_sleep_before=False)
     culebron.refreshAfterDeviceAction.assert_called_once_with()
+
+
+def test_hide_vignette_hides_each_overlay_item():
+    culebron = object.__new__(Culebron)
+    culebron.canvas = Mock()
+    culebron.vignetteId = 1
+    culebron.waitMessageShadowId = 2
+    culebron.waitMessageId = 3
+    culebron.enableEvents = Mock()
+
+    Culebron.hideVignette(culebron)
+
+    culebron.canvas.itemconfigure.assert_has_calls([
+        call(1, state='hidden'),
+        call(2, state='hidden'),
+        call(3, state='hidden'),
+    ])
+    culebron.enableEvents.assert_called_once_with()

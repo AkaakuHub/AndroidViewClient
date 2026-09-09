@@ -544,12 +544,9 @@ This is usually installed by python package. Check your distribution details.
         if self.vignetteId:
             if DEBUG:
                 print("🟪     showing vignette id=%d" % self.vignetteId, file=sys.stderr)
-            # disable events while we are processing one
             self.disableEvents()
-            self.canvas.tag_lower('screenshot')
-            self.canvas.lift(self.vignetteId)
-            self.canvas.lift(self.waitMessageShadowId)
-            self.canvas.lift(self.waitMessageId)
+            for item in (self.vignetteId, self.waitMessageShadowId, self.waitMessageId):
+                self.canvas.itemconfigure(item, state='normal')
             self.canvas.update_idletasks()
 
     def hideVignette(self):
@@ -560,12 +557,8 @@ This is usually installed by python package. Check your distribution details.
         if self.vignetteId:
             if DEBUG:
                 print("🟪     hiding vignette", file=sys.stderr)
-            try:
-                self.canvas.tag_lift('screenshot')
-            except Exception as ex:
-                if DEBUG:
-                    print("🟪     exception=%s" % ex, file=sys.stderr)
-                self.canvas.lift(self.imageId)
+            for item in (self.vignetteId, self.waitMessageShadowId, self.waitMessageId):
+                self.canvas.itemconfigure(item, state='hidden')
             self.canvas.update_idletasks()
             self.enableEvents()
 
