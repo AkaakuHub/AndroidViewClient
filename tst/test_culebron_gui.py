@@ -57,6 +57,37 @@ def test_touch_point_refreshes_without_blocking_gui():
     culebron.refreshAfterDeviceAction.assert_called_once_with()
 
 
+def test_touch_point_uses_device_with_null_backend():
+    culebron = object.__new__(Culebron)
+    culebron.areEventsDisabled = False
+    culebron.isTouchingPoint = True
+    culebron.coordinatesUnit = Unit.PX
+    culebron.vc = None
+    culebron.device = Mock()
+    culebron.device.display = {"density": 2, "orientation": 1}
+    culebron.printOperation = Mock()
+    culebron.showVignette = Mock()
+    culebron.sleep = Mock()
+    culebron.refreshAfterDeviceAction = Mock()
+    culebron.statusBar = Mock()
+
+    Culebron.touchPoint(culebron, 200, 100)
+
+    culebron.device.touch.assert_called_once_with(200, 100)
+    culebron.printOperation.assert_any_call(None, Operation.TOUCH_POINT, 200, 100, Unit.PX, 1)
+    culebron.refreshAfterDeviceAction.assert_called_once_with()
+
+
+def test_sleep_supports_null_backend():
+    culebron = object.__new__(Culebron)
+    culebron.vc = None
+    culebron.printOperation = Mock()
+
+    Culebron.sleep(culebron, 5, do_actual_sleep_before=False)
+
+    culebron.printOperation.assert_called_once_with(None, Operation.SLEEP, 5)
+
+
 def test_hide_vignette_hides_each_overlay_item():
     culebron = object.__new__(Culebron)
     culebron.canvas = Mock()

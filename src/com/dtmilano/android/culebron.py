@@ -277,7 +277,7 @@ This is usually installed by python package. Check your distribution details.
 
         self.vc = vc
         self.dump = None
-        if 'CONCERTINA' in self.vc.debug:
+        if self.vc and 'CONCERTINA' in self.vc.debug:
             global DEBUG_CONCERTINA
             DEBUG_CONCERTINA = self.vc.debug['CONCERTINA'] is not None
         self.printOperation = printOperation
@@ -885,8 +885,11 @@ This is usually installed by python package. Check your distribution details.
 
     def pressBack(self):
         self.showVignette()
-        self.vc.pressBack()
-        if self.vc.uiAutomatorHelper:
+        if self.vc:
+            self.vc.pressBack()
+        else:
+            self.device.press('BACK')
+        if self.vc and self.vc.uiAutomatorHelper:
             self.printOperation(None, Operation.PRESS_BACK_UI_AUTOMATOR_HELPER)
         else:
             self.printOperation(None, Operation.PRESS_BACK)
@@ -894,8 +897,11 @@ This is usually installed by python package. Check your distribution details.
 
     def pressHome(self):
         self.showVignette()
-        self.vc.pressHome()
-        if self.vc.uiAutomatorHelper:
+        if self.vc:
+            self.vc.pressHome()
+        else:
+            self.device.press('HOME')
+        if self.vc and self.vc.uiAutomatorHelper:
             self.printOperation(None, Operation.PRESS_HOME_UI_AUTOMATOR_HELPER)
         else:
             self.printOperation(None, Operation.PRESS_HOME)
@@ -903,8 +909,11 @@ This is usually installed by python package. Check your distribution details.
 
     def pressRecentApps(self):
         self.showVignette()
-        self.vc.pressRecentApps()
-        if self.vc.uiAutomatorHelper:
+        if self.vc:
+            self.vc.pressRecentApps()
+        else:
+            self.device.press('KEYCODE_APP_SWITCH')
+        if self.vc and self.vc.uiAutomatorHelper:
             self.printOperation(None, Operation.PRESS_RECENT_APPS_UI_AUTOMATOR_HELPER)
         else:
             self.printOperation(None, Operation.PRESS_RECENT_APPS)
@@ -957,29 +966,30 @@ This is usually installed by python package. Check your distribution details.
             print("Is touching point:", self.isTouchingPoint, file=sys.stderr)
         if self.isTouchingPoint:
             self.showVignette()
-            if self.vc:
-                if self.vc.uiAutomatorHelper:
-                    self.vc.uiAutomatorHelper.ui_device.click(int(x), int(y))
-                    self.vc.uiAutomatorHelper.ui_device.wait_for_idle()
-                    self.printOperation(None, Operation.CLICK_UI_AUTOMATOR_HELPER, int(x), int(y))
-                    self.printOperation(None, Operation.WAIT_FOR_IDLE_UI_AUTOMATOR_HELPER)
-                    self.isTouchingPoint = self.vc is None
-                    self.takeScreenshotAndShowItOnWindow()
-                    # self.hideVignette()
-                    self.statusBar.clear()
-                    return
-                else:
+            if self.vc and self.vc.uiAutomatorHelper:
+                self.vc.uiAutomatorHelper.ui_device.click(int(x), int(y))
+                self.vc.uiAutomatorHelper.ui_device.wait_for_idle()
+                self.printOperation(None, Operation.CLICK_UI_AUTOMATOR_HELPER, int(x), int(y))
+                self.printOperation(None, Operation.WAIT_FOR_IDLE_UI_AUTOMATOR_HELPER)
+                self.isTouchingPoint = self.vc is None
+                self.takeScreenshotAndShowItOnWindow()
+                self.statusBar.clear()
+                return
+            else:
+                if self.vc:
                     self.vc.touch(x, y)
-                    if self.coordinatesUnit == Unit.DIP:
-                        x = round(x / self.device.display['density'], 2)
-                        y = round(y / self.device.display['density'], 2)
-                    self.printOperation(None, Operation.TOUCH_POINT, x, y, self.coordinatesUnit,
-                                        self.device.display['orientation'])
-                    self.sleep(5, do_actual_sleep_before=False)
-                    self.isTouchingPoint = self.vc is None
-                    self.refreshAfterDeviceAction()
-                    self.statusBar.clear()
-                    return
+                else:
+                    self.device.touch(x, y)
+                if self.coordinatesUnit == Unit.DIP:
+                    x = round(x / self.device.display['density'], 2)
+                    y = round(y / self.device.display['density'], 2)
+                self.printOperation(None, Operation.TOUCH_POINT, x, y, self.coordinatesUnit,
+                                    self.device.display['orientation'])
+                self.sleep(5, do_actual_sleep_before=False)
+                self.isTouchingPoint = self.vc is None
+                self.refreshAfterDeviceAction()
+                self.statusBar.clear()
+                return
         else:
             warnings.warn('isTouchingPoint is False')
 
@@ -1001,7 +1011,10 @@ This is usually installed by python package. Check your distribution details.
             print("Is long touching point:", self.isLongTouchingPoint, file=sys.stderr)
         if self.isLongTouchingPoint:
             self.showVignette()
-            self.vc.longTouch(x, y)
+            if self.vc:
+                self.vc.longTouch(x, y)
+            else:
+                self.device.longTouch(x, y)
             if self.coordinatesUnit == Unit.DIP:
                 x = round(x / self.device.display['density'], 2)
                 y = round(y / self.device.display['density'], 2)
@@ -1086,7 +1099,7 @@ This is usually installed by python package. Check your distribution details.
         :param keycode the keycode name
         """
 
-        if self.vc.uiAutomatorHelper:
+        if self.vc and self.vc.uiAutomatorHelper:
             try:
                 if not keycode.startswith('KEYCODE_'):
                     keycode = f'KEYCODE_{keycode}'
@@ -1387,7 +1400,7 @@ This is usually installed by python package. Check your distribution details.
         self.quit()
 
     def quit(self):
-        if self.vc.uiAutomatorHelper:
+        if self.vc and self.vc.uiAutomatorHelper:
             if DEBUG or True:
                 print("Quitting UiAutomatorHelper...", file=sys.stderr)
             self.vc.uiAutomatorHelper.quit()
@@ -1468,7 +1481,7 @@ This is usually installed by python package. Check your distribution details.
 
         # the operation on this current device is always done in PX
         # so let's do it before any conversion takes place
-        if self.vc.uiAutomatorHelper:
+        if self.vc and self.vc.uiAutomatorHelper:
             self.vc.uiAutomatorHelper.ui_device.swipe(start_x=int(x0), start_y=int(y0), end_x=int(x1), end_y=int(y1),
                                                       steps=steps)
             self.vc.uiAutomatorHelper.ui_device.wait_for_idle()
@@ -1873,7 +1886,7 @@ This is usually installed by python package. Check your distribution details.
     def sleep(self, secs: float, do_actual_sleep_before: bool = True) -> None:
         if do_actual_sleep_before:
             time.sleep(secs)
-        if self.vc.uiAutomatorHelper:
+        if self.vc and self.vc.uiAutomatorHelper:
             # FIXME: we may use this for many cases, but we need to exclude explicit sleeps
             # self.printOperation(None, Operation.WAIT_FOR_WINDOW_UPDATE_UI_AUTOMATOR_HELPER, secs)
             self.printOperation(None, Operation.SLEEP_UI_AUTOMATOR_HELPER, secs)
