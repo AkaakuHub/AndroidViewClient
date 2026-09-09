@@ -40,8 +40,8 @@ Input Reader State:
 
 
 def test_transform_touch_position_for_landscape_rotation():
-    assert transform_touch_position(0, 0, DEVICE) == (2279, 0)
-    assert transform_touch_position(32767, 32767, DEVICE) == (0, 1079)
+    assert transform_touch_position(0, 0, DEVICE) == (0, 1079)
+    assert transform_touch_position(32767, 32767, DEVICE) == (2279, 0)
 
 
 def test_touch_event_parser_builds_gesture():
@@ -59,7 +59,7 @@ def test_touch_event_parser_builds_gesture():
 
     gestures = [gesture for line in lines if (gesture := parser.feed(line))]
 
-    assert gestures == [Gesture(10.0, 10.2001, (2279, 0), (0, 1079))]
+    assert gestures == [Gesture(10.0, 10.2001, (0, 1079), (2279, 0))]
 
 
 def test_build_replay_actions_preserves_start_timing_and_gestures():

@@ -84,11 +84,11 @@ def transform_touch_position(raw_x, raw_y, device):
     if device.orientation == 0:
         return portrait_x, portrait_y
     if device.orientation == 1:
-        return device.surface_height - 1 - portrait_y, portrait_x
+        return portrait_y, device.surface_width - 1 - portrait_x
     if device.orientation == 2:
         return device.surface_width - 1 - portrait_x, device.surface_height - 1 - portrait_y
     if device.orientation == 3:
-        return portrait_y, device.surface_width - 1 - portrait_x
+        return device.surface_height - 1 - portrait_y, portrait_x
     raise ValueError(f"未対応の画面方向です: {device.orientation}")
 
 
