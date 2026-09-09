@@ -156,15 +156,22 @@ class TouchEventParser:
 
 def build_replay_actions(gestures):
     actions = []
-    previous_end = None
+    recording_started_at = gestures[0].started_at if gestures else None
     for gesture in gestures:
-        delay = 0 if previous_end is None else max(0, gesture.started_at - previous_end)
+        start_offset = gesture.started_at - recording_started_at
         if gesture.distance <= 20 and gesture.duration_ms < 500:
-            actions.append((delay, "tap", *gesture.start))
+            actions.append((start_offset, "tap", *gesture.start))
         else:
-            actions.append((delay, "swipe", *gesture.start, *gesture.end, gesture.duration_ms))
-        previous_end = gesture.ended_at
+            actions.append((start_offset, "swipe", *gesture.start, *gesture.end, gesture.duration_ms))
     return actions
+
+
+def describe_gesture(index, gesture):
+    if gesture.distance <= 20:
+        if gesture.duration_ms < 500:
+            return f"記録{index}: タップ{gesture.start}"
+        return f"記録{index}: 長押し{gesture.start}・{gesture.duration_ms}ms"
+    return f"記録{index}: スワイプ{gesture.start}→{gesture.end}・{gesture.duration_ms}ms"
 
 
 def render_replay_script(actions):
@@ -183,9 +190,12 @@ def main():
     adb = ["adb"]
     if args.serial:
         adb.extend(["-s", args.serial])
+    replay_started_at = time.monotonic()
     for action in ACTIONS:
-        delay, kind, *values = action
-        time.sleep(delay)
+        start_offset, kind, *values = action
+        remaining = start_offset - (time.monotonic() - replay_started_at)
+        if remaining > 0:
+            time.sleep(remaining)
         if kind == "tap":
             command = ["input", "tap", *(str(value) for value in values)]
         else:
@@ -224,7 +234,7 @@ def record(output, serial=None):
             gesture = parser.feed(line)
             if gesture:
                 gestures.append(gesture)
-                print(f"記録済み: {len(gestures)}操作", file=sys.stderr)
+                print(describe_gesture(len(gestures), gesture), file=sys.stderr, flush=True)
 
     reader = threading.Thread(target=collect_gestures)
     reader.start()

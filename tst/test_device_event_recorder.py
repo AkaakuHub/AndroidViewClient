@@ -3,6 +3,7 @@ from com.dtmilano.android.device_event_recorder import (
     TouchDevice,
     TouchEventParser,
     build_replay_actions,
+    describe_gesture,
     find_active_touch_device,
     render_replay_script,
     transform_touch_position,
@@ -61,7 +62,7 @@ def test_touch_event_parser_builds_gesture():
     assert gestures == [Gesture(10.0, 10.2001, (2279, 0), (0, 1079))]
 
 
-def test_build_replay_actions_preserves_gaps_and_gestures():
+def test_build_replay_actions_preserves_start_timing_and_gestures():
     gestures = [
         Gesture(10.0, 10.1, (100, 200), (105, 205)),
         Gesture(11.0, 11.8, (300, 400), (500, 600)),
@@ -69,8 +70,16 @@ def test_build_replay_actions_preserves_gaps_and_gestures():
 
     assert build_replay_actions(gestures) == [
         (0, "tap", 100, 200),
-        (0.9000000000000004, "swipe", 300, 400, 500, 600, 800),
+        (1.0, "swipe", 300, 400, 500, 600, 800),
     ]
+
+
+def test_describe_gesture():
+    assert describe_gesture(1, Gesture(10.0, 10.1, (100, 200), (105, 205))) == "記録1: タップ(100, 200)"
+    assert describe_gesture(2, Gesture(10.0, 10.8, (100, 200), (105, 205))) == "記録2: 長押し(100, 200)・800ms"
+    assert describe_gesture(3, Gesture(10.0, 10.8, (100, 200), (500, 600))) == (
+        "記録3: スワイプ(100, 200)→(500, 600)・800ms"
+    )
 
 
 def test_render_replay_script_is_valid_python():
