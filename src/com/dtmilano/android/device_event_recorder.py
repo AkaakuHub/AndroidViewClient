@@ -190,10 +190,22 @@ def main():
     adb = ["adb"]
     if args.serial:
         adb.extend(["-s", args.serial])
+    action_count = len(ACTIONS)
+    print(f"再生開始: {{action_count}}操作", flush=True)
     replay_started_at = time.monotonic()
-    for action in ACTIONS:
+    for index, action in enumerate(ACTIONS, 1):
         start_offset, kind, *values = action
         remaining = start_offset - (time.monotonic() - replay_started_at)
+        if kind == "tap":
+            description = f"タップ x={{values[0]}}, y={{values[1]}}"
+        else:
+            description = (
+                f"スワイプ ({{values[0]}}, {{values[1]}})→({{values[2]}}, {{values[3]}})・{{values[4]}}ms"
+            )
+        print(
+            f"[{{index}}/{{action_count}}] {{start_offset:.1f}}秒: {{description}}・{{max(remaining, 0):.1f}}秒後に実行",
+            flush=True,
+        )
         if remaining > 0:
             time.sleep(remaining)
         if kind == "tap":
@@ -201,6 +213,7 @@ def main():
         else:
             command = ["input", "swipe", *(str(value) for value in values)]
         subprocess.run([*adb, "shell", *command], check=True)
+    print(f"再生完了: {{action_count}}操作", flush=True)
 
 
 if __name__ == "__main__":

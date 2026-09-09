@@ -86,3 +86,7 @@ def test_render_replay_script_is_valid_python():
     source = render_replay_script([(0, "tap", 100, 200)])
 
     compile(source, "recording.py", "exec")
+    assert 'print(f"再生開始: {action_count}操作", flush=True)' in source
+    assert "タップ x={values[0]}, y={values[1]}" in source
+    assert "スワイプ ({values[0]}, {values[1]})→({values[2]}, {values[3]})・{values[4]}ms" in source
+    assert 'print(f"再生完了: {action_count}操作", flush=True)' in source
